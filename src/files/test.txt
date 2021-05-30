@@ -1,0 +1,4 @@
+Hello!
+This is a test file.
+It will be encrypted and decrypted.
+ABCDEFGHIJKLMNOPQRSTUVWXYZ

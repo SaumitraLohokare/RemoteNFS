@@ -1,7 +1,10 @@
 from dotenv import dotenv_values
 import mimetypes
 from Google import Create_Service
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+import os
+import io
+import crypto
 
 class DriveAPI:
     def __init__(self):
@@ -54,6 +57,14 @@ class DriveAPI:
             
         return result
 
+    def getFilesData(self) -> {str:str}:
+        """
+        Will return a dict with filename as key and fileId as value
+        """
+        response = self.service.files().list().execute()['files']
+        
+        return response
+
     def getFileIds(self) -> {str:str}:
         """
         Will return a dict with filename as key and fileId as value
@@ -78,11 +89,16 @@ class DriveAPI:
         else:
             parents = [self.config['PARENT_FOLDER']]
 
-        fileName = path.split('/')[-1]
+        if '/' in path:
+            fileName = path.split('/')[-1]
+        else:
+            fileName = path.split('\\')[-1]
         fileMetadata = {
             'name': fileName,
             'parents': parents
         }
+        # TODO: Encrypt file here
+        crypto.encryptFile(path, self.config['PASSWORD'])
 
         # logic to find mime types
         _mimeType = mimetypes.guess_type(path)
@@ -90,13 +106,38 @@ class DriveAPI:
         if mimeType == None:
             raise Exception(f'Mime type of file: {fileName} could not be guessed.')
 
-        media = MediaFileUpload(path, mimetype=mimeType)
+        media = MediaFileUpload('encrypted.file', mimetype=mimeType)
 
-        self.service.files().create(
+        response = self.service.files().create(
             body=fileMetadata,
             media_body=media,
             fields='id'
         ).execute()
+
+        return fileName
+        # return response['id']
+
+    def downloadFile(self, fileId: str, fileName: str):
+        request = self.service.files().get_media(fileId=fileId)        
+
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fd=fh, request=request)
+
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+            print(f'Download progress {status.progress() * 100}')
+        
+        fh.seek(0)
+        with open(os.path.join('./downloads/', fileName), 'wb') as f:
+            f.write(fh.read())
+            f.close()
+        
+        decrypted = crypto.decryptFile(os.path.join('./files/', fileName), self.config['PASSWORD'])
+        with open(os.path.join('./downloads/', fileName), 'wb') as f:
+            f.write(decrypted)
+            f.close()
+
 
     def deleteFile(self, fileId):
         self.service.files().delete(**{'fileId': fileId}).execute()
