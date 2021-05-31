@@ -4,13 +4,18 @@ from flask import Flask, render_template, request, redirect, url_for
 from flask.json import jsonify
 from DriveAPI import DriveAPI
 from utils import utils
-
+import json
+import datetime
 app = Flask(__name__)
 api = DriveAPI()
 
-@app.route('/', methods=['GET'])
+@app.route('/files', methods=['GET'])
 def home():
     files = api.getFileIds()
+    f = open("C:/Users/shaun/OneDrive/Desktop/Academics/Sem-4/OS/J Component/OS/material_learn/src/files.json","w")
+    json_object = json.dumps(files, indent = 4)
+    f.write(json_object)
+    f.close()
     return jsonify(files)
 
 @app.route('/download', methods=['GET', 'POST'])
@@ -18,18 +23,47 @@ def download():
     file_id = request.args['id']
     file_name = request.args['name']
     api.downloadFile(file_id, file_name)
+    logs={}
+    f = open("C:/Users/shaun/OneDrive/Desktop/Academics/Sem-4/OS/J Component/OS/material_learn/src/components/logs.json","r")
+    logs = json.load(f)
+    f.close()
+    f = open("C:/Users/shaun/OneDrive/Desktop/Academics/Sem-4/OS/J Component/OS/material_learn/src/components/logs.json","w")
+    activity={}
+    activity["Name"]=file_name
+    activity["User"]="Shaunak"
+    activity["Action"]="Download"
+    activity["Date_Time"]=str(datetime.datetime.now())
+    logs[file_id].append(activity)
+    json_object = json.dumps(logs, indent = 4)
+    f.write(json_object)
+    f.close()
     return f"file id: {file_id}"
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
     file_path = request.args['path']
-    name = api.uploadFile(file_path)
+    logs={}
+    f = open("C:/Users/shaun/OneDrive/Desktop/Academics/Sem-4/OS/J Component/OS/material_learn/src/components/logs.json","r")
+    logs = json.load(f)
+    f.close()
+    f = open("C:/Users/shaun/OneDrive/Desktop/Academics/Sem-4/OS/J Component/OS/material_learn/src/components/logs.json","w")
+    name,fileid = api.uploadFile(file_path)
+    activity={}
+    activity["Name"]=name
+    activity["User"]="Shaunak"
+    activity["Action"]="Upload"
+    activity["Date_Time"]=str(datetime.datetime.now())
+    logs[fileid] = [activity]
+    json_object = json.dumps(logs, indent = 4)
+    f.write(json_object)
+    f.close()
     return f'file path: {name}'
 
 @app.route('/delete', methods=['GET', 'POST'])
 def delete():
     api.deleteFile(request.args['id'])
-    return redirect(url_for('home'))
+    # return redirect(url_for('home'))
+    return "",201
 
 def init():
     """
