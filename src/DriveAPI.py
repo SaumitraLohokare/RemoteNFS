@@ -114,7 +114,7 @@ class DriveAPI:
             fields='id'
         ).execute()
 
-        return fileName
+        return fileName,response['id']
         # return response['id']
 
     def downloadFile(self, fileId: str, fileName: str):
@@ -133,11 +133,10 @@ class DriveAPI:
             f.write(fh.read())
             f.close()
         
-        decrypted = crypto.decryptFile(os.path.join('./files/', fileName), self.config['PASSWORD'])
+        decrypted = crypto.decryptFile(os.path.join('./downloads/', fileName), self.config['PASSWORD'])
         with open(os.path.join('./downloads/', fileName), 'wb') as f:
             f.write(decrypted)
             f.close()
-
 
     def deleteFile(self, fileId):
         self.service.files().delete(**{'fileId': fileId}).execute()
